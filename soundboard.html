@@ -119,7 +119,7 @@
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            min-height: 120px;
+            min-height: 150px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -163,6 +163,7 @@
             color: #666;
             font-size: 0.9em;
             font-weight: 600;
+            min-height: 20px;
         }
 
         .slot-name.active {
@@ -190,13 +191,19 @@
             transition: all 0.3s ease;
         }
 
-        .slot-play:hover {
+        .slot-play:hover:not(:disabled) {
             transform: scale(1.05);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
         }
 
         .slot-play:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+
+        .slot-play.playing {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 0 15px rgba(245, 87, 108, 0.6);
         }
 
         .slot-stop {
@@ -213,6 +220,7 @@
 
         .slot-stop:hover {
             transform: scale(1.05);
+            box-shadow: 0 3px 10px rgba(245, 87, 108, 0.4);
         }
 
         .global-controls {
@@ -443,6 +451,13 @@
             const slider = document.getElementById('volumeSlider');
             masterVolume = slider.value / 100;
             document.getElementById('volumeValue').textContent = slider.value + '%';
+            
+            // Update all currently loaded sounds
+            for (let slotId in slots) {
+                if (slots[slotId].audio) {
+                    slots[slotId].audio.volume = masterVolume;
+                }
+            }
         }
 
         // Load audio file
@@ -456,20 +471,29 @@
                 slots[slotId] = {
                     audio: audio,
                     fileURL: fileURL,
-                    name: file.name.split('.')[0]
+                    name: file.name.split('.')[0],
+                    isPlaying: false
                 };
 
                 // Update UI
-                document.getElementById(`slot${slotId}-name`).textContent = slots[slotId].name;
-                document.getElementById(`slot${slotId}-name`).classList.add('active');
-                document.getElementById(`slot${slotId}-play`).disabled = false;
+                const nameEl = document.getElementById(`slot${slotId}-name`);
+                nameEl.textContent = slots[slotId].name;
+                nameEl.classList.add('active');
+                
+                const playBtn = document.getElementById(`slot${slotId}-play`);
+                playBtn.disabled = false;
+                playBtn.textContent = '▶ Play';
+                
                 document.getElementById(`slot${slotId}-container`).classList.add('has-file');
 
                 // Handle audio end
                 audio.addEventListener('ended', () => {
+                    slots[slotId].isPlaying = false;
                     document.getElementById(`slot${slotId}-play`).classList.remove('playing');
+                    document.getElementById(`slot${slotId}-play`).textContent = '▶ Play';
                 });
 
+                console.log(`Slot ${slotId} loaded: ${slots[slotId].name}`);
                 saveSounds();
             }
         }
@@ -478,10 +502,25 @@
         function playSlot(slotId) {
             if (slots[slotId]) {
                 const audio = slots[slotId].audio;
-                audio.currentTime = 0;
-                audio.volume = masterVolume;
-                audio.play();
-                document.getElementById(`slot${slotId}-play`).classList.add('playing');
+                const playBtn = document.getElementById(`slot${slotId}-play`);
+                
+                try {
+                    // Reset and play
+                    audio.currentTime = 0;
+                    audio.volume = masterVolume;
+                    audio.play().then(() => {
+                        slots[slotId].isPlaying = true;
+                        playBtn.classList.add('playing');
+                        playBtn.textContent = '⏸ Playing';
+                        console.log(`Playing slot ${slotId}`);
+                    }).catch(err => {
+                        console.error(`Error playing slot ${slotId}:`, err);
+                    });
+                } catch (err) {
+                    console.error(`Error:`, err);
+                }
+            } else {
+                console.log(`Slot ${slotId} is empty`);
             }
         }
 
@@ -490,7 +529,12 @@
             if (slots[slotId]) {
                 slots[slotId].audio.pause();
                 slots[slotId].audio.currentTime = 0;
-                document.getElementById(`slot${slotId}-play`).classList.remove('playing');
+                slots[slotId].isPlaying = false;
+                
+                const playBtn = document.getElementById(`slot${slotId}-play`);
+                playBtn.classList.remove('playing');
+                playBtn.textContent = '▶ Play';
+                console.log(`Stopped slot ${slotId}`);
             }
         }
 
