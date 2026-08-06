@@ -200,15 +200,11 @@
         <h1>🎵 Audio Player</h1>
         
         <div class="sounds-grid">
-            <!-- Sound 1 -->
+            <!-- Sound 1 - FART SOUND -->
             <div class="sound-card">
-                <span id="name-1">Sound 1</span>
-                <label class="upload-label" for="file-1">Load Audio</label>
-                <input type="file" id="file-1" accept="audio/*" onchange="loadAudio(this, 1)">
-                <div class="button-group">
-                    <button class="btn" onclick="playAudio(1)">Play</button>
-                    <button class="btn stop-btn" onclick="stopAudio(1)">Stop</button>
-                </div>
+                <span id="name-1">💨 FART SOUND 💨</span>
+                <button class="btn" onclick="playFart()">🔊 PLAY FART</button>
+                <button class="btn stop-btn" onclick="stopAudio(1)">Stop</button>
                 <div class="progress-container" id="progress-1">
                     <div class="progress-bar">
                         <div class="progress-fill" id="fill-1"></div>
@@ -294,6 +290,53 @@
                 document.getElementById(`time-${id}`).innerText = 
                     `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
             }
+        }
+
+        // Create a loud fart sound using Web Audio API
+        function playFart() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Create oscillators and nodes for fart sound
+            const now = audioContext.currentTime;
+            const duration = 0.8; // 800ms fart sound
+            
+            // Create main fart frequency sweep
+            const osc1 = audioContext.createOscillator();
+            const osc2 = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            const gainNode2 = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            
+            // Connect nodes
+            osc1.connect(filter);
+            osc2.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Set filter to highpass for nasty fart sound
+            filter.type = 'highpass';
+            filter.frequency.setValueAtTime(200, now);
+            filter.frequency.exponentialRampToValueAtTime(50, now + duration);
+            
+            // Main fart pitch (low-mid range)
+            osc1.type = 'sawtooth';
+            osc1.frequency.setValueAtTime(200, now);
+            osc1.frequency.exponentialRampToValueAtTime(100, now + duration);
+            
+            // Second oscillator for extra noise
+            osc2.type = 'square';
+            osc2.frequency.setValueAtTime(150, now);
+            osc2.frequency.exponentialRampToValueAtTime(80, now + duration);
+            
+            // Amplitude envelope - starts LOUD
+            gainNode.gain.setValueAtTime(1.5, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.1, now + duration);
+            
+            // Start and stop
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + duration);
+            osc2.stop(now + duration);
         }
 
         // Load file from user's computer into the browser memory
