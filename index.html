@@ -213,20 +213,16 @@
                 </div>
             </div>
 
-            <!-- Sound 2 -->
+            <!-- Sound 2 - TEST TONE -->
             <div class="sound-card">
-                <span id="name-2">Sound 2</span>
-                <label class="upload-label" for="file-2">Load Audio</label>
-                <input type="file" id="file-2" accept="audio/*" onchange="loadAudio(this, 2)">
-                <div class="button-group">
-                    <button class="btn" onclick="playAudio(2)">Play</button>
-                    <button class="btn stop-btn" onclick="stopAudio(2)">Stop</button>
-                </div>
+                <span id="name-2">🔊 TEST TONE</span>
+                <button class="btn" onclick="playTestTone()">▶ PLAY TEST</button>
+                <button class="btn stop-btn" onclick="stopTestTone()">Stop</button>
                 <div class="progress-container" id="progress-2">
                     <div class="progress-bar">
                         <div class="progress-fill" id="fill-2"></div>
                     </div>
-                    <div class="time-display" id="time-2">0:00 / 0:00</div>
+                    <div class="time-display" id="time-2">0:00 / 3:00</div>
                 </div>
             </div>
 
@@ -272,6 +268,8 @@
         // Store audio objects
         const audioTracks = {};
         const progressIntervals = {};
+        let testToneOscillators = [];
+        let testToneStartTime = 0;
 
         // Format time in MM:SS
         function formatTime(seconds) {
@@ -339,6 +337,64 @@
             osc2.stop(now + duration);
         }
 
+        // Create a test tone with multiple frequencies
+        function playTestTone() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const now = audioContext.currentTime;
+            const duration = 3; // 3 seconds
+            
+            testToneStartTime = now;
+            testToneOscillators = [];
+            
+            // Create a clean test tone (1000Hz sine wave)
+            const osc = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1000, now); // 1000Hz - standard test tone
+            
+            // Gentle fade in and out
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(0.5, now + 0.1);
+            gainNode.gain.linearRampToValueAtTime(0.5, now + duration - 0.1);
+            gainNode.gain.linearRampToValueAtTime(0, now + duration);
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            osc.start(now);
+            osc.stop(now + duration);
+            
+            testToneOscillators.push(osc);
+            
+            // Update progress bar for test tone
+            const progressInterval = setInterval(() => {
+                const elapsed = audioContext.currentTime - testToneStartTime;
+                const percentage = (elapsed / duration) * 100;
+                document.getElementById('fill-2').style.width = percentage + '%';
+                document.getElementById('time-2').innerText = 
+                    `${formatTime(elapsed)} / 3:00`;
+                
+                if (elapsed >= duration) {
+                    clearInterval(progressInterval);
+                    document.getElementById('fill-2').style.width = '0%';
+                    document.getElementById('time-2').innerText = '0:00 / 3:00';
+                }
+            }, 100);
+        }
+
+        // Stop test tone
+        function stopTestTone() {
+            testToneOscillators.forEach(osc => {
+                try {
+                    osc.stop();
+                } catch (e) {}
+            });
+            testToneOscillators = [];
+            document.getElementById('fill-2').style.width = '0%';
+            document.getElementById('time-2').innerText = '0:00 / 3:00';
+        }
+
         // Load file from user's computer into the browser memory
         function loadAudio(input, id) {
             const file = input.files[0];
@@ -396,6 +452,7 @@
                 audioTracks[id].currentTime = 0;
                 updateProgress(id);
             });
+            stopTestTone();
         }
     </script>
 </body>
